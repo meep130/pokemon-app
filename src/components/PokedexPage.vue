@@ -18,6 +18,11 @@
           {{ suggestion }}
         </li>
       </ul>
+      <div v-if="totalPages > 1" class="pagination">
+        <button @click="prevPage" :disabled="currentPage === 1">Previous</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button @click="nextPage" :disabled="currentPage === totalPages">Next</button>
+      </div>
       <div v-if="pokemon" class="pokemon-details">
         <h2>{{ pokemon.name }}</h2>
         <img :src="pokemon.sprites.front_default" alt="Pokémon image" />
@@ -27,7 +32,7 @@
         <button @click="playCry" class="play-cry-button">Play Cry</button>
         <audio ref="pokemonCry"></audio>
       </div>
-      <div v-else-if="searchQuery" class="no-results">
+      <div v-else-if="searchQuery && suggestions.length === 0" class="no-results">
         No Pokémon found with the name "{{ searchQuery }}".
       </div>
     </div>
@@ -40,28 +45,65 @@ export default {
   data() {
     return {
       searchQuery: '',
-      suggestions: [],
       allPokemonNames: [],
+      suggestions: [],
       pokemon: null,
+      currentPage: 1,
+      itemsPerPage: 10,
+      totalPokemon: 0,
     }
   },
+  computed: {
+    totalPages() {
+      return Math.ceil(this.totalPokemon / this.itemsPerPage)
+    },
+  },
   mounted() {
-    this.fetchAllPokemonNames()
+    this.fetchInitialPokemonNames(0, 10)
   },
   methods: {
-    async fetchAllPokemonNames() {
-      const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1000')
+    async fetchInitialPokemonNames(offset) {
+      const response = await fetch(
+        `https://pokeapi.co/api/v2/pokemon?limit=${this.itemsPerPage}&&offset=${offset}`,
+      )
       const data = await response.json()
+
       this.allPokemonNames = data.results.map((pokemon) => pokemon.name)
+      this.suggestions = this.allPokemonNames
+      this.totalPokemon = data.count
+      this.updatePaginatedSuggestions()
     },
     filterSuggestions() {
       if (this.searchQuery.trim() === '') {
-        this.suggestions = []
+        this.suggestions = this.allPokemonNames
+        this.currentPage = 1
+        this.updatePaginatedSuggestions()
         return
       }
       this.suggestions = this.allPokemonNames.filter((name) =>
         name.toLowerCase().includes(this.searchQuery.toLowerCase()),
       )
+      this.currentPage = 1
+      this.updatePaginatedSuggestions()
+    },
+    updatePaginatedSuggestions() {
+      const start = (this.currentPage - 1) * this.itemsPerPage
+      const end = start + this.itemsPerPage
+      fetchInitialPokemonNames(start, end)
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++
+        const start = (this.currentPage - 1) * this.itemsPerPage
+        this.fetchInitialPokemonNames(start)
+      }
+    },
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--
+        const start = (this.currentPage - 1) * this.itemsPerPage
+        this.fetchInitialPokemonNames(start)
+      }
     },
     async selectSuggestion(suggestion) {
       this.searchQuery = suggestion
@@ -171,5 +213,27 @@ export default {
 .play-cry-button:hover {
   background-color: #ffcb05;
   color: #2a75bb;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.pagination button {
+  padding: 5px 10px;
+  margin: 0 5px;
+  background-color: #2a75bb;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 </style>
