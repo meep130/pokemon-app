@@ -1,5 +1,5 @@
 <template>
-  <div class="pokedex-page">
+  <div class="pokedex-page" @click="handleClickOutside">
     <h1>Pokédex Search</h1>
     <div class="search-container">
       <input
@@ -8,12 +8,13 @@
         @input="filterSuggestions"
         placeholder="Enter Pokémon name"
         class="search-input"
+        @click.stop
       />
-      <ul v-if="suggestions.length > 0" class="suggestions-list">
+      <ul v-if="suggestions.length > 0" class="suggestions-list" ref="suggestionsList">
         <li
           v-for="suggestion in suggestions"
           :key="suggestion"
-          @click="selectSuggestion(suggestion)"
+          @click.stop="selectSuggestion(suggestion)"
         >
           {{ suggestion }}
         </li>
@@ -138,6 +139,12 @@ export default {
         }
       }
     },
+    handleClickOutside(event) {
+      const suggestionsList = this.$refs.suggestionsList
+      if (suggestionsList && !suggestionsList.contains(event.target)) {
+        this.suggestions = []
+      }
+    },
   },
 }
 </script>
@@ -157,6 +164,8 @@ export default {
   flex-direction: column;
   align-items: center;
   width: 100%;
+  position: relative;
+  z-index: 2;
 }
 
 .search-input {
@@ -175,6 +184,9 @@ export default {
   list-style-type: none;
   padding: 0;
   margin: 0;
+  position: absolute;
+  top: 50px;
+  z-index: 3;
 }
 
 .suggestions-list li {
@@ -188,6 +200,7 @@ export default {
 
 .pokemon-details {
   text-align: center;
+  z-index: 1;
 }
 
 .pokemon-details img {
