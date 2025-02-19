@@ -19,6 +19,31 @@
           {{ suggestion }}
         </li>
       </ul>
+      <div
+        v-if="
+          searchQuery && suggestions.length == 0 && pokemon != null && pokemon.name !== searchQuery
+        "
+        class="no-results"
+      >
+        No Pokémon found with the name "{{ searchQuery }}".
+      </div>
+      <table class="pokemon-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="pokemon in allPokemon"
+            :key="pokemon.name"
+            @click.stop="selectSuggestion(pokemon.name)"
+          >
+            <td>{{ pokemon.name }}</td>
+          </tr>
+        </tbody>
+      </table>
+
       <div v-if="totalPages > 1" class="pagination">
         <button @click="prevPage" :disabled="currentPage === 1">Previous</button>
         <span>Page {{ currentPage }} of {{ totalPages }}</span>
@@ -33,9 +58,6 @@
         <button @click="playCry" class="play-cry-button">Play Cry</button>
         <audio ref="pokemonCry"></audio>
       </div>
-      <div v-else-if="searchQuery && suggestions.length === 0" class="no-results">
-        No Pokémon found with the name "{{ searchQuery }}".
-      </div>
     </div>
   </div>
 </template>
@@ -46,7 +68,7 @@ export default {
   data() {
     return {
       searchQuery: '',
-      allPokemonNames: [],
+      allPokemon: [],
       suggestions: [],
       pokemon: null,
       currentPage: 1,
@@ -60,7 +82,7 @@ export default {
     },
   },
   mounted() {
-    this.fetchInitialPokemonNames(0, 10)
+    this.fetchInitialPokemonNames(0)
   },
   methods: {
     async fetchInitialPokemonNames(offset) {
@@ -69,28 +91,24 @@ export default {
       )
       const data = await response.json()
 
-      this.allPokemonNames = data.results.map((pokemon) => pokemon.name)
-      this.suggestions = this.allPokemonNames
+      this.allPokemon = data.results
       this.totalPokemon = data.count
       this.updatePaginatedSuggestions()
     },
     filterSuggestions() {
       if (this.searchQuery.trim() === '') {
-        this.suggestions = this.allPokemonNames
+        this.suggestions = this.allPokemon.map((pokemon) => pokemon.name)
         this.currentPage = 1
-        this.updatePaginatedSuggestions()
         return
       }
-      this.suggestions = this.allPokemonNames.filter((name) =>
-        name.toLowerCase().includes(this.searchQuery.toLowerCase()),
-      )
+      this.suggestions = this.allPokemon
+        .map((pokemon) => pokemon.name)
+        .filter((name) => name.toLowerCase().includes(this.searchQuery.toLowerCase()))
       this.currentPage = 1
       this.updatePaginatedSuggestions()
     },
     updatePaginatedSuggestions() {
       const start = (this.currentPage - 1) * this.itemsPerPage
-      const end = start + this.itemsPerPage
-      fetchInitialPokemonNames(start, end)
     },
     nextPage() {
       if (this.currentPage < this.totalPages) {
