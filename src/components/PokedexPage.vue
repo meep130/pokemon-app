@@ -10,7 +10,11 @@
         class="search-input"
         @click.stop
       />
-      <ul v-if="suggestions.length > 0" class="suggestions-list" ref="suggestionsList">
+      <ul
+        v-if="suggestions.length > 0 && searchQuery.trim() !== ''"
+        class="suggestions-list"
+        ref="suggestionsList"
+      >
         <li
           v-for="suggestion in suggestions"
           :key="suggestion"
@@ -74,6 +78,7 @@ export default {
       currentPage: 1,
       itemsPerPage: 10,
       totalPokemon: 0,
+      allSuggestions: [],
     }
   },
   computed: {
@@ -81,10 +86,25 @@ export default {
       return Math.ceil(this.totalPokemon / this.itemsPerPage)
     },
   },
+  watch: {
+    totalPokemon(newVal, oldVal) {
+      if (oldVal != newVal) {
+        this.fetchAllSuggestions()
+      }
+    },
+  },
   mounted() {
     this.fetchInitialPokemonNames(0)
   },
   methods: {
+    async fetchAllSuggestions() {
+      const response = await fetch(
+        `https://pokeapi.co/api/v2/pokemon?limit=${this.totalPokemon}&&offset=0`,
+      )
+      const data = await response.json()
+
+      this.allSuggestions = data.results.map((pokemon) => pokemon.name)
+    },
     async fetchInitialPokemonNames(offset) {
       const response = await fetch(
         `https://pokeapi.co/api/v2/pokemon?limit=${this.itemsPerPage}&&offset=${offset}`,
@@ -93,22 +113,13 @@ export default {
 
       this.allPokemon = data.results
       this.totalPokemon = data.count
-      this.updatePaginatedSuggestions()
     },
     filterSuggestions() {
-      if (this.searchQuery.trim() === '') {
-        this.suggestions = this.allPokemon.map((pokemon) => pokemon.name)
-        this.currentPage = 1
-        return
+      if (this.searchQuery.trim() !== '') {
+        this.suggestions = this.allSuggestions
+          .filter((name) => name.toLowerCase().includes(this.searchQuery.toLowerCase()))
+          .slice(0, 10)
       }
-      this.suggestions = this.allPokemon
-        .map((pokemon) => pokemon.name)
-        .filter((name) => name.toLowerCase().includes(this.searchQuery.toLowerCase()))
-      this.currentPage = 1
-      this.updatePaginatedSuggestions()
-    },
-    updatePaginatedSuggestions() {
-      const start = (this.currentPage - 1) * this.itemsPerPage
     },
     nextPage() {
       if (this.currentPage < this.totalPages) {
